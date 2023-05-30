@@ -1,0 +1,11 @@
+name: Generate Installations Diffs
+
+on:
+  pull_request:
+  push:
+    branches: [HEAD_BRANCH, main]
+
+jobs:
+  generate_diffs:
+    secrets: inherit
+    uses: giantswarm/management-cluster-bases/.github/workflows/generate_diffs.yaml@main

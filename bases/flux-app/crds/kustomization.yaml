@@ -1,0 +1,2 @@
+resources:
+  - https://github.com/giantswarm/management-cluster-bases//bases/flux-app/crds?ref=main

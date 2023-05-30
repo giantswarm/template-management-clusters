@@ -1,0 +1,9 @@
+name: Delete Installation Diffs
+
+on:
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  delete_diffs:
+    uses: giantswarm/management-cluster-bases/.github/workflows/delete_diffs.yaml@main
