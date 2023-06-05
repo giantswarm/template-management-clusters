@@ -1,0 +1,12 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+kind: Kustomization
+metadata:
+  name: flux
+  namespace: flux-giantswarm
+spec:
+  postBuild:
+    substitute:
+      # This field must be updated to match the prefix part of the repository created from this template:
+      # {customer_codename}-management-clusters, e.g.: example-management-clusters -> customer_codename: example
+      customer_codename: "CUSTOMER_CODENAME"
