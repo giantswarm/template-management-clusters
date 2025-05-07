@@ -6,9 +6,6 @@
   "ignorePaths": [
     ".github/**"
   ],
-  "ignoreDeps": [
-    "flux-app"
-  ],
   "packageRules": [
     // Ensure each Management Cluster has their own PR generated
     {
