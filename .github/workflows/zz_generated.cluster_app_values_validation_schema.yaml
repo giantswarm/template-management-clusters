@@ -2,7 +2,7 @@
 #
 #    devctl
 #
-#    https://github.com/giantswarm/devctl/blob/8960b8810d2fdb97543d84baa8b50ffa40da26a9/pkg/gen/input/workflows/internal/file/cluster_app_values_validation_using_schema.yaml.template
+#    https://github.com/giantswarm/devctl/blob/f2b5cf71dfa175afa70f721eca503072d0e7d4c4/pkg/gen/input/workflows/internal/file/cluster_app_values_validation_using_schema.yaml.template
 #
 
 # This workflow validates the values passed to a cluster-app against the JSON schema of the cluster-app.
@@ -13,10 +13,13 @@ on:
   push:
     paths:
       - 'management-clusters/**/cluster-app-manifests.yaml'
+  branches-ignore:
+    - main
+    - master
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
