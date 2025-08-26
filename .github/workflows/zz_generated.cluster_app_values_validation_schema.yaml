@@ -2,7 +2,7 @@
 #
 #    devctl
 #
-#    https://github.com/giantswarm/devctl/blob/17585dd91f626a8ff4efafbd18c8448dcf56adbb/pkg/gen/input/workflows/internal/file/cluster_app_values_validation_using_schema.yaml.template
+#    https://github.com/giantswarm/devctl/blob/8da382794b2aabc7395d04c50234c3e0cc71fa89/pkg/gen/input/workflows/internal/file/cluster_app_values_validation_using_schema.yaml.template
 #
 
 # This workflow validates the values passed to a cluster-app against the JSON schema of the cluster-app.
@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Set up Helm
         run: |
@@ -40,7 +40,7 @@ jobs:
           echo "${HOME}/go/bin" >> $GITHUB_PATH
 
       - name: Checkout GiantSwarm Releases repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           repository: giantswarm/releases
           path: releases
