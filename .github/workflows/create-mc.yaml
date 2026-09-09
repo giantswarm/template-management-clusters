@@ -130,16 +130,24 @@ jobs:
               }
             );
 
-            const bodies = comments.map(c => c.body).join('\n');
+            // Anchored on the labelled line, newest comment first, like
+            // close-cascade.yaml. An unanchored scan matched a usage example.
+            function findLabelled(label) {
+              for (let i = comments.length - 1; i >= 0; i--) {
+                const m = (comments[i].body || '').match(
+                  new RegExp('\\*\\*' + label + ':\\*\\* (https://github\\.com/\\S+)')
+                );
+                if (m) return m[1];
+              }
+              return null;
+            }
 
-            // The installations PR is not merged here — merge-cascade.yaml
-            // merges it when this init PR is merged, once the bootstrap has
-            // actually succeeded. It is still checked for, because its absence
-            // means `mctl config` never completed.
-            const ccrMatch  = bodies.match(/https:\/\/github\.com\/[^/]+\/[^/]+-configs\/pull\/(\d+)/);
-            const instMatch = bodies.match(/https:\/\/github\.com\/([^/]+)\/installations\/pull\/(\d+)/);
+            // installations is merged by merge-cascade.yaml at init-PR merge;
+            // checked here only because its absence means config never ran.
+            const ccrURL  = findLabelled('CCR PR');
+            const instURL = findLabelled('Installations PR');
 
-            if (!ccrMatch || !instMatch) {
+            if (!ccrURL || !instURL) {
               core.setFailed(
                 'Could not find CCR PR or Installations PR URLs in init PR comments. ' +
                 'Run /config on this PR before running /create-mc.'
@@ -147,10 +155,14 @@ jobs:
               return;
             }
 
-            const [, ccrOrg, ccrRepo, ccrNum] = bodies.match(
-              /https:\/\/github\.com\/([^/]+)\/([^/]+-configs)\/pull\/(\d+)/
-            );
-            const [, instOrg, instNum] = instMatch;
+            const ccrParts = ccrURL.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
+            const instParts = instURL.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
+            if (!ccrParts || !instParts) {
+              core.setFailed(`Could not parse PR URLs: CCR=${ccrURL} installations=${instURL}`);
+              return;
+            }
+            const [, ccrOrg, ccrRepo, ccrNum] = ccrParts;
+            const [, instOrg, , instNum] = instParts;
 
             core.info(`Merging CCR PR: ${ccrOrg}/${ccrRepo}#${ccrNum}`);
             try {
