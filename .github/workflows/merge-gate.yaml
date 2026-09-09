@@ -1,0 +1,230 @@
+# Publishes the `mctl/ready-to-merge` commit status on cluster init PRs.
+#
+# The status is red until the installation is genuinely safe to merge, and it
+# is meant to be registered as a REQUIRED status check on the CMC repo's
+# default branch (see "Setup" below). Merging the init PR triggers the merge
+# cascade (merge-cascade.yaml), which merges the installations PR and arms
+# auto-merge on the teleport-fleet PR. If those PRs do not exist yet, merging
+# the init PR silently loses that cascade — hence the gate.
+#
+# The status is green only when all three hold:
+#
+#   1. The newest `/create-mc` result comment reports success. The teleport-fleet
+#      PR is opened mid-run (after pivot, before setup-flux), and it is reported
+#      on failures too, so "the PR links exist" alone does NOT mean the cluster
+#      was created — a run that died in verify would otherwise unblock the merge.
+#   2. An installations PR URL was reported and that PR is open or merged.
+#   3. A teleport-fleet PR URL was reported and that PR is open or merged.
+#
+# Why a commit status and not a check run: the facts this gate reads arrive in
+# PR comments (posted by the config workflow and by the Tekton pipeline), not in
+# pushes. A commit status can be re-posted for the same head SHA on an
+# issue_comment event, so the gate flips green the moment the pipeline reports
+# success — without anyone pushing a commit.
+#
+# Why non-init PRs get an explicit green rather than being skipped: a job
+# skipped by an `if:` condition posts no status at all, and GitHub treats a
+# missing required check as "expected — waiting", which would block every
+# unrelated PR in the repo forever. Note the inverse trap too: a job that is
+# skipped *after* being triggered reports as "skipped", which GitHub counts as
+# PASSING for required checks. Either way, the gate must run and post
+# explicitly rather than rely on `if:`.
+#
+# Required repository secrets:
+#   MCTL_APP_ID          - giantswarm-mctlbot GitHub App ID, used to mint a
+#                          token with read access to the CCR, installations
+#                          and teleport-fleet repos, and write access to
+#                          statuses on this repo
+#   MCTL_APP_PRIVATE_KEY - giantswarm-mctlbot GitHub App private key
+#
+# Setup (one-time, per CMC repo): register the context as required.
+#   gh api -X PATCH repos/{org}/{repo}/branches/main/protection/required_status_checks \
+#     -f 'contexts[]=mctl/ready-to-merge'
+#
+# When testing changes to this file: issue_comment-triggered workflows always
+# run the copy on the repository's DEFAULT branch, so edits here have no effect
+# on comment events until they are merged to main of the CMC repo. Push events
+# on the PR branch do pick up the branch's copy.
+#
+# This workflow is intended to be added to (customer)-management-clusters
+# repositories. It is kept here as the canonical template.
+
+name: Merge gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+  issue_comment:
+    types: [created, edited]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+  statuses: write
+
+jobs:
+  gate:
+    name: Check cluster PRs are ready to merge
+    runs-on: ubuntu-latest
+    # Comment events fire on issues as well as PRs; only PRs have a head SHA to
+    # attach a status to. Everything else is decided inside the script so that
+    # a status is always posted — see the header on skipped-vs-missing checks.
+    if: >
+      github.event_name == 'pull_request' ||
+      github.event.issue.pull_request != null
+
+    steps:
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ secrets.MCTL_APP_ID }}
+          private-key: ${{ secrets.MCTL_APP_PRIVATE_KEY }}
+
+      - name: Evaluate and publish status
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.app-token.outputs.token }}
+          script: |
+            const CONTEXT = 'mctl/ready-to-merge';
+            const targetURL =
+              `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}` +
+              `/actions/runs/${context.runId}`;
+
+            const prNumber = context.eventName === 'pull_request'
+              ? context.payload.pull_request.number
+              : context.issue.number;
+
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            // GitHub caps status descriptions at 140 characters.
+            async function publish(state, description) {
+              const trimmed = description.length > 137
+                ? description.slice(0, 137) + '...'
+                : description;
+              await github.rest.repos.createCommitStatus({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                sha: pr.head.sha,
+                context: CONTEXT,
+                state,
+                description: trimmed,
+                target_url: targetURL,
+              });
+              core.info(`${CONTEXT} = ${state}: ${trimmed}`);
+            }
+
+            // Branch format: {installation}-init or {installation}-init-{provider}
+            const branch = pr.head.ref;
+            const match = branch.match(/^(.+)-init(?:-(?:capa|capz|capv|capvcd))?$/);
+            if (!match) {
+              await publish('success', 'Not a cluster init PR — nothing to gate.');
+              return;
+            }
+            const installation = match[1];
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            // 1. Did the newest bootstrap run succeed?
+            //
+            // The Tekton finally tasks overwrite the newest comment carrying this
+            // token, so the last one holds the latest run's outcome. Deliberately
+            // the newest comment rather than the newest match: if an earlier run
+            // succeeded and a rerun failed, the latest outcome is what governs.
+            const resultToken = `<!-- mctl-create-mc-result-${installation} -->`;
+            const results = comments.filter(c => (c.body || '').includes(resultToken));
+            const latestResult = results.length ? results[results.length - 1].body : '';
+
+            if (!latestResult) {
+              await publish('failure', `No /create-mc run for ${installation} yet — comment /create-mc to bootstrap it.`);
+              return;
+            }
+            if (!latestResult.includes('created successfully')) {
+              await publish('failure', `The latest /create-mc run for ${installation} did not succeed — rerun /create-mc.`);
+              return;
+            }
+
+            // 2 + 3. Collect the PR links the config workflow and the pipeline
+            // reported. Newest-first first match, so a link recorded by an
+            // earlier run is not lost if a later comment omits it.
+            function findMarker(label) {
+              const re = new RegExp(`\\*\\*${label}:\\*\\*\\s*(.+)`);
+              for (const comment of [...comments].reverse()) {
+                const m = (comment.body || '').match(re);
+                if (m) return m[1].trim();
+              }
+              return '';
+            }
+
+            // Reported values are either a URL or a human-readable failure note
+            // (e.g. the pipeline's "⚠️ not opened — <reason>").
+            function asURL(reported) {
+              const m = reported.match(/^(https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/\d+)/);
+              return m ? m[1] : '';
+            }
+
+            async function stateOf(url) {
+              const m = url.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
+              const [, owner, repo, number] = m;
+              const { data } = await github.rest.pulls.get({
+                owner, repo, pull_number: parseInt(number, 10),
+              });
+              return data.merged ? 'merged' : data.state;
+            }
+
+            const targets = [
+              { label: 'Installations PR', name: 'installations' },
+              { label: 'Teleport fleet PR', name: 'teleport-fleet' },
+            ];
+
+            const summary = [];
+            for (const target of targets) {
+              const reported = findMarker(target.label);
+              if (!reported) {
+                await publish('failure', `No ${target.name} PR reported for ${installation} — run /config, then /create-mc.`);
+                return;
+              }
+
+              const url = asURL(reported);
+              if (!url) {
+                // The run reported the step but it did not produce a PR.
+                await publish('failure', `${target.name} PR missing: ${reported}`);
+                return;
+              }
+
+              let state;
+              try {
+                state = await stateOf(url);
+              } catch (err) {
+                await publish('error', `Could not read the ${target.name} PR (${err.status || err.message}).`);
+                return;
+              }
+
+              if (state !== 'open' && state !== 'merged') {
+                await publish('failure', `The ${target.name} PR is ${state} without being merged: ${url}`);
+                return;
+              }
+              summary.push(`- **${target.label}** (${state}): ${url}`);
+            }
+
+            await core.summary
+              .addHeading(`✅ ${installation} is ready to merge`, 3)
+              .addRaw([
+                'Merging this PR will merge the installations PR and arm auto-merge on the',
+                'teleport-fleet PR.\n\n',
+                summary.join('\n'),
+              ].join(' '))
+              .write();
+
+            await publish('success', 'installations + teleport-fleet PRs will be merged when this PR merges.');

@@ -1,0 +1,120 @@
+# Validates cluster-app-manifests.yaml files changed in a pull request.
+# Runs mctl validate against each changed manifest and reports the result
+# as a PR check.
+#
+# This workflow is intended to be added to (customer)-management-clusters
+# repositories. It is kept here as the canonical template.
+
+name: Validate cluster manifest
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'management-clusters/**/cluster-app-manifests.yaml'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  MCTL_IMAGE: ${{ vars.MCTL_IMAGE }}
+
+jobs:
+  validate:
+    name: Schema validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate changed manifests
+        id: validate
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          files=$(git diff --name-only --diff-filter=ACM "$BASE" "$HEAD" \
+            -- 'management-clusters/**/cluster-app-manifests.yaml')
+
+          if [ -z "$files" ]; then
+            echo "No manifest files changed."
+            exit 0
+          fi
+
+          echo "Validating: $files"
+          failed=0
+          for f in $files; do
+            echo "--- $f ---"
+            set +e
+            result=$(docker run --rm -v "$(pwd):/workspace" \
+              "$MCTL_IMAGE" \
+              validate --manifest "/workspace/$f" 2>&1)
+            exit_code=$?
+            set -e
+            echo "$result"
+            if [ $exit_code -ne 0 ]; then
+              failed=1
+              printf '#### `%s`\n```\n%s\n```\n\n' "$f" "$result" >> /tmp/validate_output
+            fi
+          done
+
+          delimiter="VALIDATE_EOF_${RANDOM}_${RANDOM}"
+          {
+            echo "failed=$failed"
+            echo "output<<${delimiter}"
+            cat /tmp/validate_output 2>/dev/null || true
+            echo "${delimiter}"
+          } >> "$GITHUB_OUTPUT"
+
+          exit $failed
+
+      - name: Check for placeholders
+        id: placeholders
+        if: failure() && steps.validate.outputs.failed == '1'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # If any changed manifest still contains placeholder values, the init
+          # comment already told the user what to do — skip the validate comment.
+          files=$(git diff --name-only --diff-filter=ACM "$BASE" "$HEAD" \
+            -- 'management-clusters/**/cluster-app-manifests.yaml')
+          has_placeholders=false
+          placeholder_re='\b(BASE_DOMAIN|AWS_REGION|AWS_ACCOUNT_ID'
+          placeholder_re="$placeholder_re|AZURE_SUBSCRIPTION_ID|AZURE_TENANT_ID|AZURE_LOCATION"
+          placeholder_re="$placeholder_re|VSPHERE_SERVER|VCD_SITE|VCD_ORG|VCD_OVDC"
+          placeholder_re="$placeholder_re|VCD_OVDC_NETWORK|VCD_VIP_SUBNET)\b"
+          for f in $files; do
+            if grep -qE "$placeholder_re" "$f"; then
+              has_placeholders=true
+              break
+            fi
+          done
+          echo "has_placeholders=$has_placeholders" >> "$GITHUB_OUTPUT"
+
+      - name: Post validation failures as PR comment
+        if: failure() && steps.validate.outputs.failed == '1' && steps.placeholders.outputs.has_placeholders == 'false'
+        uses: actions/github-script@v7
+        env:
+          VALIDATE_OUTPUT: ${{ steps.validate.outputs.output }}
+        with:
+          script: |
+            const output = process.env.VALIDATE_OUTPUT || '';
+            const body = [
+              '### ❌ Manifest validation failed',
+              '',
+              'The following files have schema validation errors. Fix them before commenting `/config`.',
+              '',
+              output,
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
