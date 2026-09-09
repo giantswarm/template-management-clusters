@@ -77,8 +77,11 @@ jobs:
       github.event.issue.pull_request != null
 
     steps:
+      # Non-fatal: only the cross-repo reads need the App. Posting the status
+      # needs statuses:write, which this workflow's own token already has.
       - name: Generate app token
         id: app-token
+        continue-on-error: true
         uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.MCTL_APP_ID }}
@@ -90,7 +93,7 @@ jobs:
       - name: Evaluate and publish status
         uses: actions/github-script@v7
         with:
-          github-token: ${{ steps.app-token.outputs.token }}
+          github-token: ${{ steps.app-token.outputs.token || github.token }}
           script: |
             const CONTEXT = 'mctl/ready-to-merge';
             const targetURL =
