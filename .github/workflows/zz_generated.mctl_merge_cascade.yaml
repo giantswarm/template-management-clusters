@@ -2,7 +2,7 @@
 #
 #    devctl
 #
-#    https://github.com/giantswarm/devctl/blob/b6b7919f7c47c901a5086094bf5d83fd40e1dc37/pkg/gen/input/workflows/internal/file/mctl_merge_cascade.yaml.template
+#    https://github.com/giantswarm/devctl/blob/649d8a6c4568a1c8ffe72531dc59faf1ff652f30/pkg/gen/input/workflows/internal/file/mctl_merge_cascade.yaml.template
 #
 
 # On init PR merge: merges the installations PR directly, arms auto-merge on the teleport-fleet PR so its Deploy checks gate it.
@@ -36,7 +36,7 @@ jobs:
     steps:
       - name: Generate app token
         id: app-token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
         with:
           app-id: ${{ secrets.MCTL_APP_ID }}
           private-key: ${{ secrets.MCTL_APP_PRIVATE_KEY }}
@@ -44,7 +44,7 @@ jobs:
           owner: ${{ github.repository_owner }}
 
       - name: Merge installations and teleport-fleet PRs
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         env:
           BRANCH: ${{ github.event.pull_request.head.ref }}
         with:
