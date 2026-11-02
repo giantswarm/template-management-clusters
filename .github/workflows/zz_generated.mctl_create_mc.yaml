@@ -2,7 +2,7 @@
 #
 #    devctl
 #
-#    https://github.com/giantswarm/devctl/blob/b6b7919f7c47c901a5086094bf5d83fd40e1dc37/pkg/gen/input/workflows/internal/file/mctl_create_mc.yaml.template
+#    https://github.com/giantswarm/devctl/blob/649d8a6c4568a1c8ffe72531dc59faf1ff652f30/pkg/gen/input/workflows/internal/file/mctl_create_mc.yaml.template
 #
 
 # `/create-mc` on an init PR merges the CCR PR (Flux reads it during bootstrap) and fires the Tekton mctl-create-mc pipeline.
@@ -35,7 +35,7 @@ jobs:
 
     steps:
       - name: Acknowledge comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             await github.rest.reactions.createForIssueComment({
@@ -47,7 +47,7 @@ jobs:
 
       - name: Generate app token
         id: app-token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
         with:
           app-id: ${{ secrets.MCTL_APP_ID }}
           private-key: ${{ secrets.MCTL_APP_PRIVATE_KEY }}
@@ -56,7 +56,7 @@ jobs:
 
       - name: Get PR branch
         id: pr
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const pr = await github.rest.pulls.get({
@@ -81,7 +81,7 @@ jobs:
 
       # URLs come from the `**CCR PR:**` / `**Installations PR:**` lines the config workflow posts.
       - name: Merge CCR PR
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
@@ -158,7 +158,7 @@ jobs:
 
       # The Tekton pipeline replaces this comment in place via its result token.
       - name: Post running comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         env:
           INSTALLATION: ${{ steps.install.outputs.name }}
         with:
@@ -185,7 +185,7 @@ jobs:
 
       # Hidden comment matched by the Tekton CEL filter; carries MCTL_IMAGE so the pipeline runs the same mctl.
       - name: Post Tekton trigger comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         env:
           INSTALLATION: ${{ steps.install.outputs.name }}
         with:
