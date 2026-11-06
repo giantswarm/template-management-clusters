@@ -2,7 +2,7 @@
 #
 #    devctl
 #
-#    https://github.com/giantswarm/devctl/blob/649d8a6c4568a1c8ffe72531dc59faf1ff652f30/pkg/gen/input/workflows/internal/file/mctl_init.yaml.template
+#    https://github.com/giantswarm/devctl/blob/d04ada716cf58d73a725ca498459141e95baee94/pkg/gen/input/workflows/internal/file/mctl_init.yaml.template
 #
 
 # Creating an {installation}-init-{provider} branch runs `mctl init --placeholders` and opens the init PR.
@@ -98,7 +98,7 @@ jobs:
 
       - name: Post comment
         if: always()
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         env:
           MCTL_OUTPUT:    ${{ steps.mctl.outputs.output }}
           MCTL_EXIT_CODE: ${{ steps.mctl.outputs.exit_code }}

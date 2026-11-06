@@ -2,7 +2,7 @@
 #
 #    devctl
 #
-#    https://github.com/giantswarm/devctl/blob/5cab1abe02d7a582b7ab4b08df0a049e4803042c/pkg/gen/input/workflows/internal/file/mctl_merge_gate.yaml.template
+#    https://github.com/giantswarm/devctl/blob/d04ada716cf58d73a725ca498459141e95baee94/pkg/gen/input/workflows/internal/file/mctl_merge_gate.yaml.template
 #
 
 # Posts the required mctl/ready-to-merge status: green once the latest /create-mc succeeded, the installations and teleport-fleet PRs are open or merged, and (customer installations) the installations PR has its Slack support and AE contacts filled in.
@@ -50,7 +50,7 @@ jobs:
 
       - name: Evaluate and publish status
         id: gate
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         env:
           APP_TOKEN: ${{ steps.app-token.outputs.token }}
         with:
@@ -302,7 +302,7 @@ jobs:
       - name: Comment on leftover branch overrides
         # Set only on the green path.
         if: steps.gate.outputs.installation != ''
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         env:
           INSTALLATION:   ${{ steps.gate.outputs.installation }}
           PR_NUMBER:      ${{ steps.gate.outputs.pr_number }}
