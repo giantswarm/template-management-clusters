@@ -2,7 +2,7 @@
 #
 #    devctl
 #
-#    https://github.com/giantswarm/devctl/blob/2d100dc7e2073513ceab883d92f4e6cdff8640a0/pkg/gen/input/workflows/internal/file/mctl_validate_manifest.yaml.template
+#    https://github.com/giantswarm/devctl/blob/d04ada716cf58d73a725ca498459141e95baee94/pkg/gen/input/workflows/internal/file/mctl_validate_manifest.yaml.template
 #
 
 # Runs `mctl validate` on changed cluster-app-manifests.yaml files.
@@ -98,7 +98,7 @@ jobs:
 
       - name: Post validation failures as PR comment
         if: failure() && steps.validate.outputs.failed == '1' && steps.placeholders.outputs.has_placeholders == 'false'
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         env:
           VALIDATE_OUTPUT: ${{ steps.validate.outputs.output }}
         with:

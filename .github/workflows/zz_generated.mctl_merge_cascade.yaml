@@ -2,7 +2,7 @@
 #
 #    devctl
 #
-#    https://github.com/giantswarm/devctl/blob/5cab1abe02d7a582b7ab4b08df0a049e4803042c/pkg/gen/input/workflows/internal/file/mctl_merge_cascade.yaml.template
+#    https://github.com/giantswarm/devctl/blob/d04ada716cf58d73a725ca498459141e95baee94/pkg/gen/input/workflows/internal/file/mctl_merge_cascade.yaml.template
 #
 
 # On init PR merge: merges the installations PR directly, arms auto-merge on the teleport-fleet PR so its Deploy checks gate it.
@@ -44,7 +44,7 @@ jobs:
           owner: ${{ github.repository_owner }}
 
       - name: Merge installations and teleport-fleet PRs
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         env:
           BRANCH: ${{ github.event.pull_request.head.ref }}
         with:
