@@ -2,7 +2,7 @@
 #
 #    devctl
 #
-#    https://github.com/giantswarm/devctl/blob/d04ada716cf58d73a725ca498459141e95baee94/pkg/gen/input/workflows/internal/file/mctl_init.yaml.template
+#    https://github.com/giantswarm/devctl/blob/051c5a7c207916b88a1559debcff463de91ce392/pkg/gen/input/workflows/internal/file/mctl_init.yaml.template
 #
 
 # Creating an {installation}-init-{provider} branch runs `mctl init --placeholders` and opens the init PR.
@@ -18,7 +18,7 @@ permissions:
   issues: write
 
 env:
-  MCTL_IMAGE: ${{ vars.MCTL_IMAGE || 'gsoci.azurecr.io/giantswarm/mctl:0.7.0' }}
+  MCTL_IMAGE: ${{ vars.MCTL_IMAGE || 'gsoci.azurecr.io/giantswarm/mctl:0.8.0' }}
 
 jobs:
   init:
@@ -52,7 +52,7 @@ jobs:
 
       - name: Generate app token
         id: app-token
-        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           app-id: ${{ secrets.MCTL_APP_ID }}
           private-key: ${{ secrets.MCTL_APP_PRIVATE_KEY }}
@@ -98,7 +98,7 @@ jobs:
 
       - name: Post comment
         if: always()
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           MCTL_OUTPUT:    ${{ steps.mctl.outputs.output }}
           MCTL_EXIT_CODE: ${{ steps.mctl.outputs.exit_code }}
