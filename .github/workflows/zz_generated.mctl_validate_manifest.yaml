@@ -2,7 +2,7 @@
 #
 #    devctl
 #
-#    https://github.com/giantswarm/devctl/blob/d04ada716cf58d73a725ca498459141e95baee94/pkg/gen/input/workflows/internal/file/mctl_validate_manifest.yaml.template
+#    https://github.com/giantswarm/devctl/blob/051c5a7c207916b88a1559debcff463de91ce392/pkg/gen/input/workflows/internal/file/mctl_validate_manifest.yaml.template
 #
 
 # Runs `mctl validate` on changed cluster-app-manifests.yaml files.
@@ -21,7 +21,7 @@ permissions:
   pull-requests: write
 
 env:
-  MCTL_IMAGE: ${{ vars.MCTL_IMAGE || 'gsoci.azurecr.io/giantswarm/mctl:0.7.0' }}
+  MCTL_IMAGE: ${{ vars.MCTL_IMAGE || 'gsoci.azurecr.io/giantswarm/mctl:0.8.0' }}
 
 jobs:
   validate:
@@ -31,7 +31,7 @@ jobs:
     if: github.repository != 'giantswarm/template-management-clusters'
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -98,7 +98,7 @@ jobs:
 
       - name: Post validation failures as PR comment
         if: failure() && steps.validate.outputs.failed == '1' && steps.placeholders.outputs.has_placeholders == 'false'
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           VALIDATE_OUTPUT: ${{ steps.validate.outputs.output }}
         with:
