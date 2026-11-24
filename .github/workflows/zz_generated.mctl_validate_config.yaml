@@ -2,7 +2,7 @@
 #
 #    devctl
 #
-#    https://github.com/giantswarm/devctl/blob/051c5a7c207916b88a1559debcff463de91ce392/pkg/gen/input/workflows/internal/file/mctl_validate_config.yaml.template
+#    https://github.com/giantswarm/devctl/blob/f97c900169e34fdb9d4bbf2f39648c5e2c2276d9/pkg/gen/input/workflows/internal/file/mctl_validate_config.yaml.template
 #
 
 # Runs `mctl validate-config` on init PRs; silent until `mctl config` has run, then prompts for /create-mc.
@@ -140,6 +140,7 @@ jobs:
                 '```',
                 '',
               ] : []),
+              'Approve the CCR PR before commenting `/create-mc`; the bot can\'t merge it without a review.',
               'Comment `/create-mc` on this PR when you are ready to start the bootstrap pipeline.',
             ].join('\n');
 
